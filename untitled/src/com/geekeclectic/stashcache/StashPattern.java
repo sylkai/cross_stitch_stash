@@ -1,6 +1,8 @@
 package com.geekeclectic.stashcache;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+
 import org.json.*;
 
 
@@ -29,9 +31,10 @@ public class StashPattern {
         patternName = name;
         patternHeight = height;
         patternWidth = width;
+        isKit = false;
     }
 
-    public StashPattern(JSONObject json) throws JSONException {
+    public StashPattern(JSONObject json, HashMap<String, StashThread> threadMap, HashMap<String, StashFabric> fabricMap) throws JSONException {
         patternName = json.getString(JSON_NAME);
         patternHeight = json.getInt(JSON_HEIGHT);
         patternWidth = json.getInt(JSON_WIDTH);
@@ -42,13 +45,41 @@ public class StashPattern {
         }
 
         if (json.has(JSON_FABRIC)) {
-            patternFabric = new StashFabric(json.getJSONObject(JSON_FABRIC));
+            patternFabric = fabricMap.get(json.get(JSON_FABRIC));
+            patternFabric.setUsedFor(this);
         }
 
         JSONArray array = json.getJSONArray(JSON_THREADS);
         for (int i = 0; i < array.length(); i++) {
-            threads.add(new Thread(array.getJSONObject(i)));
+            StashThread thread = threadMap.get(array.getString(i));
+            thread.usedInPattern(this);
+            threads.add(thread);
         }
+    }
+
+    public JSONObject toJSON() throws JSONException {
+        JSONObject json = new JSONObject();
+        json.put(JSON_NAME, patternName);
+        json.put(JSON_HEIGHT, patternHeight);
+        json.put(JSON_WIDTH, patternWidth);
+        json.put(JSON_KIT, isKit);
+
+        if (patternDesigner != null) {
+            json.put(JSON_DESIGNER, patternDesigner);
+        }
+
+        if (patternFabric != null) {
+            json.put(JSON_FABRIC, patternFabric.getId());
+        }
+
+        JSONArray array = new JSONArray();
+        for (StashThread thread : threads) {
+            array.put(thread.getKey());
+        }
+
+        json.put(JSON_THREADS, array);
+
+        return json;
     }
 
     public void setDesigner(String designer) {
@@ -97,6 +128,14 @@ public class StashPattern {
 
     public boolean getKit() {
         return isKit;
+    }
+
+    public ArrayList<StashThread> getThreadList() {
+        return threads;
+    }
+
+    public void addThread(StashThread thread) {
+        threads.add(thread);
     }
 
 }
